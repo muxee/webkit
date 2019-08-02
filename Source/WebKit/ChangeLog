@@ -1,3 +1,90 @@
+2019-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Do not send NetworkProcessProxy::LogTestingEvent message if we are not testing
+        https://bugs.webkit.org/show_bug.cgi?id=200360
+
+        Reviewed by Tim Horton.
+
+        Sending this message causes instantiation of the default WebsiteDataStore in the UIProcess,
+        which causes more memory to be used than is needed if we are browsing without the default WebsiteDataStore.
+
+        Covered by an API test.
+
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::logTestingEvent):
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::NetworkSession):
+        * NetworkProcess/NetworkSession.h:
+        (WebKit::NetworkSession::enableResourceLoadStatisticsLogTestingEvent const):
+        * NetworkProcess/NetworkSessionCreationParameters.cpp:
+        (WebKit::NetworkSessionCreationParameters::encode const):
+        (WebKit::NetworkSessionCreationParameters::decode):
+        * NetworkProcess/NetworkSessionCreationParameters.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureNetworkProcess):
+        * UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm:
+        (WebKit::WebsiteDataStore::parameters):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::hasStatisticsTestingCallback const):
+
+2019-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Move FormData zip file generation to NetworkProcess and enable it for all WebKit clients for uploading directories
+        https://bugs.webkit.org/show_bug.cgi?id=200102
+        <rdar://problem/53275114>
+
+        Reviewed by Darin Adler.
+
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::encode const):
+        * Platform/IPC/FormDataReference.h:
+        (IPC::FormDataReference::encode const):
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageUIClient.h:
+        (API::InjectedBundle::PageUIClient::shouldGenerateFileForUpload): Deleted.
+        (API::InjectedBundle::PageUIClient::generateFileForUpload): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp:
+        (WebKit::InjectedBundlePageUIClient::shouldGenerateFileForUpload): Deleted.
+        (WebKit::InjectedBundlePageUIClient::generateFileForUpload): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::shouldReplaceWithGeneratedFileForUpload): Deleted.
+        (WebKit::WebChromeClient::generateReplacementFile): Deleted.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2019-08-01  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION: HSBC Personal Banking download/print dialog is usually positioned off screen on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=200356
+        <rdar://problem/51885199>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::desktopClassBrowsingRecommendedForRequest):
+        Add HSBC domains to the list of sites that recommend mobile mode by default.
+
+2019-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebProcessProxy::didBecomeUnresponsive()
+        https://bugs.webkit.org/show_bug.cgi?id=200346
+        <rdar://problem/53795984>
+
+        Reviewed by Geoffrey Garen.
+
+        Make sure the BackgroundProcessResponsivenessTimer / ResponsivenessTimer ref their client
+        while they call mayBecomeUnresponsive() / willChangeIsResponsive() / didChangeIsResponsive()
+        / didBecomeUnresponsive() on their client, in case calling one of these ends up destroying
+        the client.
+
+        * UIProcess/BackgroundProcessResponsivenessTimer.cpp:
+        (WebKit::BackgroundProcessResponsivenessTimer::setResponsive):
+        * UIProcess/ResponsivenessTimer.cpp:
+        (WebKit::ResponsivenessTimer::timerFired):
+        * UIProcess/ResponsivenessTimer.h:
+        * UIProcess/WebProcessProxy.h:
+
 2019-08-01  Youenn Fablet  <youenn@apple.com>
 
         UserMediaPermissionRequestManagerProxy should not use audio+video denied requests to deny audio-only or video-only requests

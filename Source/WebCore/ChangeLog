@@ -1,3 +1,157 @@
+2019-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Pages using MessagePorts should be PageCacheable
+        https://bugs.webkit.org/show_bug.cgi?id=200366
+        <rdar://problem/53837882>
+
+        Reviewed by Geoffrey Garen.
+
+        Allow a page to enter PageCache, even if it has MessagePorts (potentially with
+        pending messages). If there are pending messages on the MessagePorts when
+        entering PageCache, those will get dispatched upon restoring from PageCache.
+
+        Test: fast/history/page-cache-MessagePort-pending-message.html
+
+        * dom/MessagePort.cpp:
+        (WebCore::MessagePort::messageAvailable):
+        (WebCore::MessagePort::dispatchMessages):
+        Do not dispatch messages while in PageCache.
+
+        (WebCore::MessagePort::canSuspendForDocumentSuspension const):
+        Allow pages with MessagePort objects to enter PageCache.
+
+        * dom/ScriptExecutionContext.cpp:
+        (WebCore::ScriptExecutionContext::resumeActiveDOMObjects):
+        Make sure pending messages on MessagePorts get dispatched asynchronously after restoring
+        from PageCache.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::areAllLoadersPageCacheAcceptable):
+        Make sure only CachedResources that are still loading upon load cancelation prevent
+        entering PageCache.
+
+2019-08-01  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation of PageConsoleClient with !ENABLE(VIDEO)
+        https://bugs.webkit.org/show_bug.cgi?id=200380
+
+        Reviewed by Joseph Pecoraro.
+
+        * page/PageConsoleClient.cpp:
+        (WebCore::PageConsoleClient::screenshot):
+
+2019-08-01  Mark Lam  <mark.lam@apple.com>
+
+        Add crash diagnostics for debugging unexpected zapped cells.
+        https://bugs.webkit.org/show_bug.cgi?id=200149
+        <rdar://problem/53570112>
+
+        Reviewed by Yusuke Suzuki.
+
+        No new tests because this is a feature for debugging crashes.  It has been tested
+        manually by modifying the code to force a crash at the point of interest.
+
+        Added some comments to document the hashes of known subspaces.
+
+        * bindings/js/WebCoreJSClientData.cpp:
+        (WebCore::JSVMClientData::JSVMClientData):
+
+2019-08-01  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Do simple nullptr check elimination using basic data flow analysis when generating metal code
+        https://bugs.webkit.org/show_bug.cgi?id=200352
+
+        Reviewed by Myles C. Maxfield.
+
+        When doing metal code generation, we frequently know whether something
+        is null or not. This patch does a basic propagation of this information
+        to avoid emitting excessive null checks in the generated Metal code.
+        This is a 6% speedup (with a p value of 0.0001) in Metal compile times
+        on compute_boids.
+
+        An example of a null check we now eliminate is:
+        ```
+        int x;
+        thread int* ptr = &x; // We know that the lvalue for "x" is non-null, so we produce a non-null rvalue here.
+        *ptr = 42; // We know that the "ptr" rvalue is non-null, so we omit the null check.
+        ```
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::appendRightValueWithNullability):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::appendRightValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::appendLeftValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::takeLastValueAndNullability):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::takeLastLeftValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+
+2019-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Move FormData zip file generation to NetworkProcess and enable it for all WebKit clients for uploading directories
+        https://bugs.webkit.org/show_bug.cgi?id=200102
+        <rdar://problem/53275114>
+
+        Reviewed by Darin Adler.
+
+        To enable directory uploading in WebKit2, we extended WebKit1's model of asking the application to generate a file for uploading.
+        This means the WebProcess needed access to everything necessary to zip a whole directory, and clients that have not implemented
+        the strange WKBundlePageUIClient callbacks won't be able to upload directories.  Safari's implementation had already been copied
+        to BlobDataFileReference::generateReplacementFile, so I reused that code to do the zipping.  Instead of a complicated model of
+        keeping track of a filename, possibly a generated filename, and whether we think we own the file or not and having nobody clean up,
+        we now do the generation, use, and cleaning up in the network process starting with a new function generateFilesForUpload.
+        This removes unimplemented SPI in WebUIDelegatePrivate in WebKitLegacy and stops calling the WKBundlePageUIClient related to upload
+        file generation and replaces them with automatic behavior equivalent to Safari's implementation of the WKBundlePageUIClient calls.
+        Since we no longer need to do these file operations in the WebProcess, I am also reverting r245322 and r246077 which tightens the sandbox.
+
+        Covered by an API test.
+
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::extract):
+        (WebCore::FetchBody::bodyAsFormData const):
+        * loader/FormSubmission.cpp:
+        (WebCore::FormSubmission::create):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::submitForm):
+        (WebCore::FrameLoader::loadDifferentDocumentItem):
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::didReceiveResponse):
+        (WebCore::ResourceLoader::cleanupForError):
+        * page/Chrome.cpp:
+        (WebCore::ChromeClient::shouldReplaceWithGeneratedFileForUpload): Deleted.
+        (WebCore::ChromeClient::generateReplacementFile): Deleted.
+        * page/ChromeClient.h:
+        * platform/network/FormData.cpp:
+        (WebCore::FormData::FormData):
+        (WebCore::FormData::~FormData):
+        (WebCore::FormData::createMultiPart):
+        (WebCore::FormDataElement::lengthInBytes const):
+        (WebCore::FormData::appendFile):
+        (WebCore::FormData::appendFileRange):
+        (WebCore::FormData::appendMultiPartFileValue):
+        (WebCore::FormData::appendMultiPartKeyValuePairItems):
+        (WebCore::FormData::resolveBlobReferences):
+        (WebCore::generateFileForUpload):
+        (WebCore::FormData::generateFilesForUpload):
+        (WebCore::FormData::generateFiles): Deleted.
+        (WebCore::FormData::hasGeneratedFiles const): Deleted.
+        (WebCore::FormData::hasOwnedGeneratedFiles const): Deleted.
+        (WebCore::FormData::removeGeneratedFilesIfNeeded): Deleted.
+        * platform/network/FormData.h:
+        (WebCore::FormDataElement::FormDataElement):
+        (WebCore::FormDataElement::EncodedFileData::isolatedCopy const):
+        (WebCore::FormDataElement::EncodedFileData::operator== const):
+        (WebCore::FormDataElement::EncodedFileData::encode const):
+        (WebCore::FormDataElement::EncodedFileData::decode):
+        * platform/network/cf/FormDataStreamCFNet.cpp:
+        (WebCore::advanceCurrentStream):
+        (WebCore::formCreate):
+        (WebCore::formFinalize):
+        (WebCore::createHTTPBodyCFReadStream):
+        * platform/network/mac/BlobDataFileReferenceMac.mm:
+        (WebCore::generateFileForUpload):
+        (WebCore::BlobDataFileReference::generateReplacementFile):
+        * xml/XMLHttpRequest.cpp:
+        (WebCore::XMLHttpRequest::send):
+
 2019-08-01  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [Text autosizing] [iPadOS] Add targeted hacks to address some remaining text autosizing issues
